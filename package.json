@@ -1,0 +1,40 @@
+{
+  "name": "auto-commiter",
+  "version": "0.1.0",
+  "description": "Automatically stages and commits changes in a Git repository with LLM-generated messages.",
+  "main": "index.js",
+  "bin": {
+    "auto-commiter": "./cli.js"
+  },
+  "scripts": {
+    "start": "node cli.js start",
+    "init": "node cli.js init",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "git",
+    "commit",
+    "automation",
+    "llm",
+    "ai"
+  ],
+  "author": "KunihiroS",
+  "license": "MIT",
+  "dependencies": {
+    "chokidar": "^3.5.3",
+    "dotenv": "^16.3.1",
+    "js-yaml": "^4.1.0",
+    "openai": "^4.20.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KunihiroS/auto-commiter.git" 
+  },
+  "bugs": {
+    "url": "https://github.com/KunihiroS/auto-commiter/issues"
+  },
+  "homepage": "https://github.com/KunihiroS/auto-commiter#readme"
+}

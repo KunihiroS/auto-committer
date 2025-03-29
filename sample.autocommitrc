@@ -1,0 +1,30 @@
+# Auto Commiter 設定ファイルサンプル
+
+# 監視対象のパスを指定します (必須)
+# gitignore のようなワイルドカードは現時点では未対応想定
+# プロジェクトルートからの相対パスで記述します
+watchPaths:
+  - src/
+  # - docs/
+  # - tests/
+  # - path/to/specific/file.js
+
+# 使用する LLM の設定 (必須)
+llm:
+  # プロバイダーを指定します (初回は 'openai' のみサポート予定)
+  provider: openai
+  # 使用するモデル名を指定します (例: gpt-3.5-turbo, gpt-4 など)
+  model: gpt-3.5-turbo
+  # 必要に応じて、プロバイダー固有の追加設定を記述できます
+  # 例: OpenAI の temperature など
+  # options:
+  #   temperature: 0.7
+
+# ファイル変更検知後のコミット実行までの待機時間 (ミリ秒、任意)
+# 短時間に多数のファイル変更があった場合に、コミット頻度を調整するために使用します
+# デフォルト値は 1000ms (1秒) などを想定
+# debounceDelay: 1000
+
+# コミットメッセージに付与する接頭辞 (任意)
+# デフォルトは "[Auto commit]" などを想定
+# commitPrefix: "[Auto commit]"
