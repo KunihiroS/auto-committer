@@ -14,7 +14,7 @@ const VSCODE_DIR = '.vscode';
 const TASKS_FILE_NAME = 'tasks.json';
 
 const DEFAULT_CONFIG = {
-  watchPaths: ['src/'],
+  // watchPaths: ['src/'], // Removed watchPaths
   commitIntervalSeconds: 300, // Default interval 5 minutes
   llm: {
     provider: 'openai',
@@ -22,8 +22,6 @@ const DEFAULT_CONFIG = {
   },
   commitPrefix: '[Auto commit]',
   autoPush: false, // Default autoPush setting
-  // pushRemote: 'origin', // Future enhancement
-  // pushBranch: null, // Future enhancement (null means current branch)
 };
 
 // --- Configuration Loading ---
@@ -74,11 +72,7 @@ function loadConfig() {
   if (typeof config.commitIntervalSeconds !== 'number' || config.commitIntervalSeconds < minInterval) {
        throw new Error(`'commitIntervalSeconds' in ${configFilePath} must be a number and at least ${minInterval} seconds. Current value: ${config.commitIntervalSeconds}`);
   }
-   // Basic validation for watchPaths
-   if (!Array.isArray(config.watchPaths) || config.watchPaths.length === 0) {
-       console.warn(`'watchPaths' is missing or empty in ${configFilePath}. Defaulting to ['src/'].`);
-       config.watchPaths = ['src/'];
-   }
+   // Removed watchPaths validation
 
   console.log("Final configuration:", config);
   return config;
@@ -92,9 +86,8 @@ const rl = readline.createInterface({
 });
 
 function askQuestion(query) {
-  // Add warning styling if possible (e.g., using chalk, but avoiding new deps for now)
   const WARNING_PREFIX = "\n⚠️ WARNING: ";
-  const RESET = "\n"; // Simple newline reset
+  const RESET = "\n";
   if (query.includes("WARNING:")) {
       query = query.replace("WARNING:", WARNING_PREFIX) + RESET;
   }
@@ -111,7 +104,7 @@ async function runInit() {
     const envExampleFilePath = path.join(configDirPath, ENV_EXAMPLE_FILE_NAME);
     const envFilePath = path.join(configDirPath, ENV_FILE_NAME);
     const gitignorePath = path.join(projectRoot, '.gitignore');
-    const gitignoreEntry = `${CONFIG_DIR_NAME}/${ENV_FILE_NAME}`; // Path to ignore
+    const gitignoreEntry = `${CONFIG_DIR_NAME}/${ENV_FILE_NAME}`;
 
     // Ensure config directory exists
     if (!fs.existsSync(configDirPath)) {
@@ -119,7 +112,7 @@ async function runInit() {
         console.log(`Created directory: ${CONFIG_DIR_NAME}`);
     }
 
-    // Ask about auto push first, to include it in the default config written
+    // Ask about auto push first
     const autoPushAnswer = await askQuestion(
         `Enable automatic 'git push' after each commit? (y/N) ` +
         `WARNING: This might push incomplete work and requires proper remote setup/authentication.`
@@ -131,15 +124,15 @@ async function runInit() {
         console.log("Auto push disabled.");
     }
 
-    // 1. Create .auto-committer/config.yaml template
+    // 1. Create .auto-committer/config.yaml template (without watchPaths)
     if (!fs.existsSync(configFilePath)) {
-        // Include autoPush setting based on user answer
         const configToWrite = { ...DEFAULT_CONFIG, autoPush: enableAutoPush };
+        // delete configToWrite.watchPaths; // Ensure watchPaths is not in the default written file
         const defaultConfigYaml = yaml.dump(configToWrite);
         fs.writeFileSync(configFilePath, `# Auto Committer Configuration File\n\n${defaultConfigYaml}`);
         console.log(`Created default configuration file: ${configFilePath}`);
     } else {
-        console.log(`${configFilePath} already exists. Please manually add/update 'autoPush: ${enableAutoPush}' if needed.`);
+        console.log(`${configFilePath} already exists. Please manually add/update 'autoPush: ${enableAutoPush}' and remove 'watchPaths' if needed.`);
     }
 
     // 2. Create .auto-committer/.env.example template
@@ -186,23 +179,23 @@ async function runInit() {
         console.log("Skipping VS Code task setup.");
     }
 
-    rl.close(); // Close the readline interface
+    rl.close();
     console.log("\nInitialization complete.");
     console.log(`Next steps:`);
     console.log(`  1. If needed, rename ${envExampleFilePath} to ${envFilePath} and add your OPENAI_API_KEY.`);
-    console.log(`  2. Edit ${configFilePath} to configure watchPaths, interval, autoPush etc.`);
+    console.log(`  2. Edit ${configFilePath} to configure interval, autoPush etc. (watchPaths is no longer used).`); // Updated message
     console.log(`  3. Run 'npx auto-committer start' (or reopen VS Code if you enabled the task).`);
 
 }
 
-// VS Code Task setup remains the same, creating .vscode/tasks.json at project root
+// VS Code Task setup remains the same
 async function setupVsCodeTask(projectRoot) {
     const vscodeDirPath = path.join(projectRoot, VSCODE_DIR);
     const tasksFilePath = path.join(vscodeDirPath, TASKS_FILE_NAME);
     const taskDefinition = {
-        label: "Start Auto Committer", // Corrected label
+        label: "Start Auto Committer",
         type: "shell",
-        command: "npx auto-committer start", // Corrected command
+        command: "npx auto-committer start",
         isBackground: true,
         problemMatcher: [],
         presentation: {
