@@ -21,7 +21,7 @@ function createPrompt(diff) {
     // Simple prompt, can be improved significantly
     // Consider adding context like language, project type, etc. if available
     // Also consider diff size limits for the prompt
-    const MAX_DIFF_LENGTH = 4000; // Adjust based on model context window and desired token usage
+    const MAX_DIFF_LENGTH = 128000; // Adjust based on model context window and desired token usage
     const truncatedDiff = diff.length > MAX_DIFF_LENGTH ? diff.substring(0, MAX_DIFF_LENGTH) + "\n... (diff truncated)" : diff;
 
     return `Generate a concise Git commit message (around 50 characters, imperative mood, present tense) for the following code changes:\n\n\`\`\`diff\n${truncatedDiff}\n\`\`\`\n\nCommit message:`;
@@ -52,7 +52,7 @@ async function generateCommitMessage(diff, llmConfig) {
             ],
             model: model,
             temperature: options.temperature || 0.7, // Default temperature if not specified
-            max_tokens: 60, // Limit response length
+            max_tokens: 4096, // Limit response length
             n: 1, // Generate one message
             stop: ["\n"], // Stop generation at newline if possible
             ...options // Spread any other options from config
