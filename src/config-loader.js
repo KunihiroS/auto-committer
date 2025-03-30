@@ -6,8 +6,8 @@ const readline = require('readline'); // For user interaction in init
 
 console.log("src/config-loader.js loaded");
 
-const CONFIG_DIR_NAME = '.auto-commiter'; // Directory for config files
-const CONFIG_FILE_NAME = 'config.yaml'; // Changed filename within the dir
+const CONFIG_DIR_NAME = '.auto-committer'; // Corrected directory name
+const CONFIG_FILE_NAME = 'config.yaml';
 const ENV_FILE_NAME = '.env'; // Keep standard name within the dir
 const ENV_EXAMPLE_FILE_NAME = '.env.example';
 const VSCODE_DIR = '.vscode';
@@ -172,7 +172,7 @@ async function runInit() {
     console.log(`Next steps:`);
     console.log(`  1. If needed, rename ${envExampleFilePath} to ${envFilePath} and add your OPENAI_API_KEY.`);
     console.log(`  2. Edit ${configFilePath} to configure watchPaths, interval, etc.`);
-    console.log(`  3. Run 'npx auto-commiter start' (or reopen VS Code if you enabled the task).`);
+    console.log(`  3. Run 'npx auto-committer start' (or reopen VS Code if you enabled the task).`); // Corrected command
 
 }
 
@@ -181,9 +181,9 @@ async function setupVsCodeTask(projectRoot) {
     const vscodeDirPath = path.join(projectRoot, VSCODE_DIR);
     const tasksFilePath = path.join(vscodeDirPath, TASKS_FILE_NAME);
     const taskDefinition = {
-        label: "Start Auto Commiter",
+        label: "Start Auto Committer", // Corrected label
         type: "shell",
-        command: "npx auto-commiter start",
+        command: "npx auto-committer start", // Corrected command
         isBackground: true,
         problemMatcher: [],
         presentation: {

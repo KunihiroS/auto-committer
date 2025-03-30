@@ -23,22 +23,22 @@
 *   **開発言語:** Node.js
     *   理由: `npx` によるローカルインストール不要な実行が可能であり、利用者の利便性が高い。クロスプラットフォーム対応のファイルシステム監視 (`chokidar`) や非同期処理、外部プロセス実行 (`child_process`) が容易なため。Python (`pipx` + `watchdog` 等) も代替候補となり得るが、まずは Node.js で進める。
 *   **コア機能 (依存ライブラリは最小限に):**
-    *   **設定ファイル処理:** プロジェクトルート下の `.auto-commiter/config.yaml` ファイルを `js-yaml` ライブラリで読み込み、コミット対象範囲 (`watchPaths`)、実行間隔 (`commitIntervalSeconds`)、LLM設定などを取得します。環境変数は `.auto-commiter/.env` から `dotenv` で読み込みます。
+    *   **設定ファイル処理:** プロジェクトルート下の `.auto-committer/config.yaml` ファイルを `js-yaml` ライブラリで読み込み、コミット対象範囲 (`watchPaths`)、実行間隔 (`commitIntervalSeconds`)、LLM設定などを取得します。環境変数は `.auto-committer/.env` から `dotenv` で読み込みます。
     *   **定期間隔実行ロジック:** Node.js の `setInterval` を1秒ごとに実行します。内部で残り時間を管理し、ターミナルにカウントダウンを表示（同一行上書き）。残り時間が0になったらコミット処理（ステージング → 差分取得 → LLM連携 → コミット）を実行し、タイマーをリセットします。
     *   **Git 操作:** Node.js 標準の `child_process` モジュール (`spawn` または `exec`) を利用して `git` コマンド (`add`, `diff HEAD`, `commit`) を直接実行します。(`simple-git` 等の追加ライブラリは使用しない方針)
     *   **初期化処理 (`init` コマンド):**
-        *   `.auto-commiter/` ディレクトリを作成します。
-        *   `.auto-commiter/config.yaml` と `.auto-commiter/.env.example` のテンプレート生成 (実行間隔のデフォルト値を含む)。
-        *   `.gitignore` への `.auto-commiter/.env` 追記。
+        *   `.auto-committer/` ディレクトリを作成します。
+        *   `.auto-committer/config.yaml` と `.auto-committer/.env.example` のテンプレート生成 (実行間隔のデフォルト値を含む)。
+        *   `.gitignore` への `.auto-committer/.env` 追記。
         *   **対話形式での VS Code 自動起動設定:** ユーザーに VS Code でワークスペースを開いた際に自動で `start` コマンドを実行するか確認し、同意があれば `.vscode/tasks.json` を自動生成または追記（既存タスクを保持しつつ安全に追加）します。
     *   **LLM 連携 (初回は OpenAI):**
-        *   OpenAI API を利用する場合は `openai` ライブラリを使用。APIキーは `.auto-commiter/.env` ファイルから `dotenv` ライブラリで読み込みます。
+        *   OpenAI API を利用する場合は `openai` ライブラリを使用。APIキーは `.auto-committer/.env` ファイルから `dotenv` ライブラリで読み込みます。
         *   `git diff HEAD` の結果をプロンプトに含め、コミットメッセージ生成を依頼します。
         *   将来的には Ollama 等のローカルLLM連携も検討 (HTTPリクエストで実装可能)。
 *   **実行形態 (CLI ツール):**
     *   `npx` を介して実行可能な CLI (Command Line Interface) ツールとして提供します。
     *   **主な利用方法:** `init` コマンド実行時に設定される VS Code のタスク機能により、ワークスペースを開くと**自動的にバックグラウンドで**定期間隔コミットプロセスが起動します (推奨)。
-    *   **代替利用方法:** VS Code を使用しない環境や、手動で起動したい場合は、プロジェクトディレクトリで `npx auto-commiter start` コマンドを実行し、定期間隔コミットプロセスを**フォアグラウンドで**起動することも可能です。
+    *   **代替利用方法:** VS Code を使用しない環境や、手動で起動したい場合は、プロジェクトディレクトリで `npx auto-committer start` コマンドを実行し、定期間隔コミットプロセスを**フォアグラウンドで**起動することも可能です。
     *   監視プロセスの停止は、VS Code のタスクとして実行されている場合は VS Code のターミナルパネルから、フォアグラウンド実行の場合は `Ctrl+C` で行います (`stop` コマンドは提供しません)。
     *   VS Code 拡張機能は、利用者の利便性を考慮し、現時点では採用しません (タスク機能での連携を主とするため)。
 
@@ -51,32 +51,32 @@
 2.  **初期セットアップ (プロジェクトごと):**
     *   対象の Git リポジトリのルートディレクトリで、以下のコマンドを実行し、Auto Commiter を利用するための初期設定を行います。
     ```bash
-    npx auto-commiter init
+    npx auto-committer init
     ```
     *   このコマンドは以下の処理を行います:
-        *   `.auto-commiter/` ディレクトリを作成します。
-        *   **設定ファイルテンプレートの生成 (in `.auto-commiter/`):**
+        *   `.auto-committer/` ディレクトリを作成します。
+        *   **設定ファイルテンプレートの生成 (in `.auto-committer/`):**
             *   `config.yaml`: コミット対象範囲、実行間隔、LLM設定などを記述するためのテンプレート。
             *   `.env.example`: OpenAI APIキーなどを設定するためのテンプレート。
-        *   **`.gitignore` の更新:** `.auto-commiter/.env` ファイルを Git 管理対象外にするため、`.gitignore` に `.auto-commiter/.env` を追記 (ファイルがなければ生成)。
+        *   **`.gitignore` の更新:** `.auto-committer/.env` ファイルを Git 管理対象外にするため、`.gitignore` に `.auto-committer/.env` を追記 (ファイルがなければ生成)。
         *   **VS Code 自動起動設定 (対話式):**
             *   コマンド実行中に「VS Code でこのワークスペースを開いた際に自動で Auto Commiter を起動しますか？ (y/N)」のように確認されます。
             *   `y` と回答すると、`.vscode/tasks.json` に Auto Commiter を自動起動するタスクが追加されます (ファイルが存在しない場合は作成、存在する場合は安全に追記)。
 3.  **API キー設定:**
-    *   生成された `.auto-commiter/.env.example` ファイルを `.auto-commiter/.env` にリネームします。
-    *   `.auto-commiter/.env` ファイルを開き、`OPENAI_API_KEY` にご自身の OpenAI API キーを記述します。
+    *   生成された `.auto-committer/.env.example` ファイルを `.auto-committer/.env` にリネームします。
+    *   `.auto-committer/.env` ファイルを開き、`OPENAI_API_KEY` にご自身の OpenAI API キーを記述します。
     ```dotenv
-    # .auto-commiter/.env
+    # .auto-committer/.env
     OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     ```
 4.  **設定:**
-    *   生成された `.auto-commiter/config.yaml` ファイルを開き、必要に応じて以下の項目を編集します。
+    *   生成された `.auto-committer/config.yaml` ファイルを開き、必要に応じて以下の項目を編集します。
         *   `watchPaths`: 自動コミットの**対象範囲**となるディレクトリやファイルを指定します (デフォルト: `['src/']`)。
         *   `commitIntervalSeconds`: 自動コミットを実行する**間隔**を秒単位で指定します (デフォルト: `300`, 最低 `180`)。
         *   `llm`: 使用する LLM プロバイダーやモデル名を指定します。
         *   `commitPrefix`: 自動コミットメッセージに付与する接頭辞 (任意)。
     ```yaml
-    # .auto-commiter/config.yaml 例
+    # .auto-committer/config.yaml 例
     watchPaths:
       - src/
     commitIntervalSeconds: 300 # 5分ごと
@@ -89,7 +89,7 @@
     *   **VS Code で自動起動する場合 (推奨):** `init` 時に自動起動を設定した場合、VS Code でワークスペースを開くと自動的にバックグラウンドでプロセスが開始されます。
     *   **手動で起動する場合:** プロジェクトルートで以下のコマンドを実行し、**現在のターミナル上で**定期間隔コミットプロセスを起動します。
     ```bash
-    npx auto-commiter start
+    npx auto-committer start
     ```
     *   プロセスはフォアグラウンドで実行され、次回のコミットまでのカウントダウンや、コミット実行時のログなどがターミナルに表示されます。
     *   **注意 (手動起動の場合):** このターミナルセッションで `Ctrl+C` を押すか、ターミナルを閉じるとプロセスも終了します。監視を続ける間は、このターミナルを開いたままにしておく必要があります。
@@ -97,7 +97,7 @@
     *   `start` コマンド実行後 (または VS Code 自動起動後)、設定された時間間隔ごとに、ツールが自動的に `watchPaths` で指定された範囲の変更をステージングし、変更があればコミット（LLMによるメッセージ生成付き）を実行します。実行状況は `start` コマンドを実行したターミナル（または VS Code のタスク用ターミナル）で確認できます。
 7.  **実行停止:**
     *   **VS Code で自動起動した場合:** VS Code のターミナルパネルから手動でタスクを終了させるか、VS Code を閉じます。
-    *   **手動で起動した場合:** `start` コマンドを実行したターミナルで `Ctrl+C` を押してプロセスを停止します。(`npx auto-commiter stop` コマンドは提供しません。)
+    *   **手動で起動した場合:** `start` コマンドを実行したターミナルで `Ctrl+C` を押してプロセスを停止します。(`npx auto-committer stop` コマンドは提供しません。)
 
 ## 既存の類似ツール
 

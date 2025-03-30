@@ -26,7 +26,7 @@ async function main() {
         // Keep the process running for the interval timer in start()
     } else {
         console.log(`Unknown command: ${command || 'No command provided'}`);
-        console.log("Usage: npx auto-commiter [init|start]");
+        console.log("Usage: npx auto-committer [init|start]"); // Corrected command name
         process.exit(1);
     }
 }

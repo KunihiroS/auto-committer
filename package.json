@@ -1,10 +1,10 @@
 {
-  "name": "auto-commiter",
+  "name": "auto-committer",
   "version": "0.1.0",
   "description": "Automatically stages and commits changes in a Git repository with LLM-generated messages.",
   "main": "src/index.js",
   "bin": {
-    "auto-commiter": "src/cli.js"
+    "auto-committer": "src/cli.js"
   },
   "scripts": {
     "start": "node src/cli.js start",
@@ -30,10 +30,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KunihiroS/auto-commiter.git"
+    "url": "git+https://github.com/KunihiroS/auto-committer.git"
   },
   "bugs": {
-    "url": "https://github.com/KunihiroS/auto-commiter/issues"
+    "url": "https://github.com/KunihiroS/auto-committer/issues"
   },
-  "homepage": "https://github.com/KunihiroS/auto-commiter#readme"
+  "homepage": "https://github.com/KunihiroS/auto-committer#readme"
 }
