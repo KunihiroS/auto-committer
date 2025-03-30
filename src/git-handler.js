@@ -6,7 +6,8 @@ console.log("src/git-handler.js loaded");
 // Helper function to run git commands
 function runGitCommand(args, cwd = process.cwd()) {
     return new Promise((resolve, reject) => {
-        const gitProcess = spawn('git', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] }); // ignore stdin, pipe stdout/stderr
+        console.log(`Running: git ${args.join(' ')}`); // Log the command being run
+        const gitProcess = spawn('git', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
         let stdoutData = '';
         let stderrData = '';
 
@@ -20,9 +21,9 @@ function runGitCommand(args, cwd = process.cwd()) {
 
         gitProcess.on('close', (code) => {
             if (code === 0) {
+                // console.log(`git ${args.join(' ')} stdout:`, stdoutData.trim()); // Optional: log stdout
                 resolve(stdoutData.trim());
             } else {
-                // Log stderr for debugging but reject with a cleaner message
                 console.error(`Git command "git ${args.join(' ')}" failed with code ${code}`);
                 console.error('stderr:', stderrData.trim());
                 reject(new Error(`Git command failed: ${stderrData.trim() || `Exit code ${code}`}`));
@@ -37,33 +38,24 @@ function runGitCommand(args, cwd = process.cwd()) {
 }
 
 async function stageChanges(watchPaths = []) {
-    // Decide staging strategy:
-    // 1. Stage specific paths: More controlled, but might miss files if watchPaths is complex.
-    // 2. Stage all (`git add .`): Simpler, relies on .gitignore and subsequent diff check.
-    // Let's go with staging all for simplicity initially, assuming watchPaths primarily defines *what changes trigger* the cycle.
     console.log("Staging all changes ('git add .')...");
     try {
         await runGitCommand(['add', '.']);
         console.log("Staging successful.");
     } catch (error) {
         console.error("Error during staging:", error.message);
-        throw error; // Re-throw to be caught by the main cycle handler
+        throw error;
     }
 }
 
 async function getDiff() {
     console.log("Getting staged diff ('git diff --staged')...");
     try {
-        // Use --staged to get diff of what's about to be committed
         const diffOutput = await runGitCommand(['diff', '--staged']);
-        // console.log("Diff output:", diffOutput); // Optional: log diff for debugging
         return diffOutput;
     } catch (error) {
         console.error("Error getting diff:", error.message);
-        // If diff fails, maybe there's nothing staged? Or a real git issue.
-        // Let's return empty string in this case, the commit logic will handle it.
         return '';
-        // Alternatively, re-throw: throw error;
     }
 }
 
@@ -73,17 +65,53 @@ async function commitChanges(message) {
         throw new Error("Commit message cannot be empty.");
     }
     try {
-        // Use -m flag for the message
         await runGitCommand(['commit', '-m', message]);
         console.log("Commit successful.");
     } catch (error) {
         console.error("Error during commit:", error.message);
-        // Specific handling for "nothing to commit" might be needed if stageChanges/getDiff logic allows it
         if (error.message.includes("nothing to commit")) {
              console.log("Nothing to commit, working tree clean.");
-             return; // Not really an error in our flow
+             return; // Not an error in this context
         }
-        throw error; // Re-throw other errors
+        throw error;
+    }
+}
+
+async function getCurrentBranch() {
+    console.log("Getting current branch name...");
+    try {
+        // Using 'git branch --show-current' which is available in Git 2.22+
+        // For older Git versions, 'git rev-parse --abbrev-ref HEAD' could be used
+        const branchName = await runGitCommand(['branch', '--show-current']);
+        if (!branchName) {
+            throw new Error("Could not determine current branch. Are you in a detached HEAD state?");
+        }
+        console.log(`Current branch: ${branchName}`);
+        return branchName;
+    } catch (error) {
+        console.error("Error getting current branch:", error.message);
+        throw error;
+    }
+}
+
+async function pushChanges(remote = 'origin', branch = null) {
+    const targetBranch = branch || await getCurrentBranch(); // Use specified branch or get current
+    console.log(`Pushing changes to ${remote}/${targetBranch}...`);
+    try {
+        // Simple push, assumes upstream is set or branch name matches remote
+        // More robust implementation might use `git push --set-upstream origin <branch>` on first push
+        await runGitCommand(['push', remote, targetBranch]);
+        console.log("Push successful.");
+    } catch (error) {
+        console.error(`Error during push to ${remote}/${targetBranch}:`, error.message);
+        // Provide more specific feedback if possible
+        if (error.message.includes("rejected") || error.message.includes("failed to push")) {
+            console.error("Push failed. This might be due to remote changes (pull needed), authentication issues, or lack of permissions.");
+        } else if (error.message.includes("does not appear to be a git repository") || error.message.includes("could not read from remote repository")) {
+             console.error("Push failed. Could not connect to the remote repository. Check remote URL and network connection.");
+        }
+        // Don't re-throw here? Or should the main loop know about push failures?
+        // Let's not re-throw for now, just log the error.
     }
 }
 
@@ -91,4 +119,5 @@ module.exports = {
   stageChanges,
   getDiff,
   commitChanges,
+  pushChanges, // Export the new function
 };

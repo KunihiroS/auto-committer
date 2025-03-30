@@ -21,6 +21,9 @@ const DEFAULT_CONFIG = {
     model: 'gpt-4o-mini', // Default model
   },
   commitPrefix: '[Auto commit]',
+  autoPush: false, // Default autoPush setting
+  // pushRemote: 'origin', // Future enhancement
+  // pushBranch: null, // Future enhancement (null means current branch)
 };
 
 // --- Configuration Loading ---
@@ -34,7 +37,7 @@ function loadConfig() {
   console.log(`Loading configuration from ${configFilePath} and ${envFilePath}...`);
   let userConfig = {};
 
-  // Load .auto-commiter/config.yaml
+  // Load .auto-committer/config.yaml
   try {
     if (fs.existsSync(configFilePath)) {
       const fileContents = fs.readFileSync(configFilePath, 'utf8');
@@ -42,16 +45,13 @@ function loadConfig() {
       console.log(`Loaded user config from ${configFilePath}`);
     } else {
       console.log(`${configFilePath} not found, using default configuration.`);
-      // Optionally create the directory and default config if not found? Or let init handle it.
-      // For loadConfig, let's assume init has run or defaults are acceptable.
     }
   } catch (e) {
     console.error(`Error reading or parsing ${configFilePath}:`, e);
   }
 
-  // Load .auto-commiter/.env
+  // Load .auto-committer/.env
   try {
-      // Specify the path for dotenv
       dotenv.config({ path: envFilePath });
       console.log(`Loaded environment variables from ${envFilePath}`);
   } catch(e) {
@@ -92,6 +92,12 @@ const rl = readline.createInterface({
 });
 
 function askQuestion(query) {
+  // Add warning styling if possible (e.g., using chalk, but avoiding new deps for now)
+  const WARNING_PREFIX = "\n⚠️ WARNING: ";
+  const RESET = "\n"; // Simple newline reset
+  if (query.includes("WARNING:")) {
+      query = query.replace("WARNING:", WARNING_PREFIX) + RESET;
+  }
   return new Promise(resolve => rl.question(query, ans => {
     resolve(ans.trim().toLowerCase());
   }))
@@ -113,18 +119,32 @@ async function runInit() {
         console.log(`Created directory: ${CONFIG_DIR_NAME}`);
     }
 
-    // 1. Create .auto-commiter/config.yaml template
-    if (!fs.existsSync(configFilePath)) {
-        const defaultConfigYaml = yaml.dump(DEFAULT_CONFIG);
-        fs.writeFileSync(configFilePath, `# Auto Commiter Configuration File\n\n${defaultConfigYaml}`);
-        console.log(`Created default configuration file: ${configFilePath}`);
+    // Ask about auto push first, to include it in the default config written
+    const autoPushAnswer = await askQuestion(
+        `Enable automatic 'git push' after each commit? (y/N) ` +
+        `WARNING: This might push incomplete work and requires proper remote setup/authentication.`
+    );
+    const enableAutoPush = autoPushAnswer === 'y';
+    if (enableAutoPush) {
+        console.log("Auto push enabled. Ensure your Git remote is configured correctly.");
     } else {
-        console.log(`${configFilePath} already exists.`);
+        console.log("Auto push disabled.");
     }
 
-    // 2. Create .auto-commiter/.env.example template
+    // 1. Create .auto-committer/config.yaml template
+    if (!fs.existsSync(configFilePath)) {
+        // Include autoPush setting based on user answer
+        const configToWrite = { ...DEFAULT_CONFIG, autoPush: enableAutoPush };
+        const defaultConfigYaml = yaml.dump(configToWrite);
+        fs.writeFileSync(configFilePath, `# Auto Committer Configuration File\n\n${defaultConfigYaml}`);
+        console.log(`Created default configuration file: ${configFilePath}`);
+    } else {
+        console.log(`${configFilePath} already exists. Please manually add/update 'autoPush: ${enableAutoPush}' if needed.`);
+    }
+
+    // 2. Create .auto-committer/.env.example template
     if (!fs.existsSync(envExampleFilePath)) {
-        fs.writeFileSync(envExampleFilePath, `# Environment variables for Auto Commiter (loaded from ${envFilePath})\nOPENAI_API_KEY=\n`);
+        fs.writeFileSync(envExampleFilePath, `# Environment variables for Auto Committer (loaded from ${envFilePath})\nOPENAI_API_KEY=\n`);
         console.log(`Created environment variable example file: ${envExampleFilePath}`);
          if (!fs.existsSync(envFilePath)) {
              console.log(`IMPORTANT: Please rename ${envExampleFilePath} to ${envFilePath} and add your OpenAI API key.`);
@@ -147,9 +167,8 @@ async function runInit() {
         if (fs.existsSync(gitignorePath)) {
             gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
         }
-        // Check for the specific path, including the directory
         if (!gitignoreContent.includes(gitignoreEntry)) {
-            fs.appendFileSync(gitignorePath, `\n# Auto Commiter environment file\n${gitignoreEntry}\n`);
+            fs.appendFileSync(gitignorePath, `\n# Auto Committer environment file\n${gitignoreEntry}\n`);
             console.log(`Added ${gitignoreEntry} to .gitignore`);
         } else {
              console.log(`${gitignoreEntry} already exists in .gitignore`);
@@ -159,10 +178,10 @@ async function runInit() {
     }
 
     // 4. Ask about VS Code task setup
-    const answer = await askQuestion(`Do you want to automatically start Auto Commiter when opening this workspace in VS Code? (y/N) `);
+    const vscodeAnswer = await askQuestion(`Do you want to automatically start Auto Committer when opening this workspace in VS Code? (y/N) `);
 
-    if (answer === 'y') {
-        await setupVsCodeTask(projectRoot); // Pass projectRoot, task setup remains in .vscode
+    if (vscodeAnswer === 'y') {
+        await setupVsCodeTask(projectRoot);
     } else {
         console.log("Skipping VS Code task setup.");
     }
@@ -171,8 +190,8 @@ async function runInit() {
     console.log("\nInitialization complete.");
     console.log(`Next steps:`);
     console.log(`  1. If needed, rename ${envExampleFilePath} to ${envFilePath} and add your OPENAI_API_KEY.`);
-    console.log(`  2. Edit ${configFilePath} to configure watchPaths, interval, etc.`);
-    console.log(`  3. Run 'npx auto-committer start' (or reopen VS Code if you enabled the task).`); // Corrected command
+    console.log(`  2. Edit ${configFilePath} to configure watchPaths, interval, autoPush etc.`);
+    console.log(`  3. Run 'npx auto-committer start' (or reopen VS Code if you enabled the task).`);
 
 }
 
