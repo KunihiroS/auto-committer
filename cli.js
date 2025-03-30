@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
-// This file handles command-line argument parsing and execution.
-const { start, runInit } = require('./index'); // Import functions from index
+console.log('[CLI DEBUG] Raw process.argv:', JSON.stringify(process.argv)); // Keep debug log
+
+// Import functions directly from src/index.js
+const { start, runInit } = require('./src/index');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -10,7 +12,8 @@ async function main() {
     if (command === 'init') {
         console.log("Executing 'init' command...");
         try {
-            await runInit(); // Call the init logic from config-loader via index
+            // runInit is likely defined in config-loader, but exposed via index.js
+            await runInit();
         } catch (error) {
              console.error("Initialization failed:", error);
              process.exit(1);
@@ -26,7 +29,7 @@ async function main() {
         // Keep the process running for the interval timer in start()
     } else {
         console.log(`Unknown command: ${command || 'No command provided'}`);
-        console.log("Usage: npx auto-committer [init|start]"); // Corrected command name
+        console.log("Usage: npx auto-committer [init|start]");
         process.exit(1);
     }
 }

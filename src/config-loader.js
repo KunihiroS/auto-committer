@@ -72,7 +72,6 @@ function loadConfig() {
   if (typeof config.commitIntervalSeconds !== 'number' || config.commitIntervalSeconds < minInterval) {
        throw new Error(`'commitIntervalSeconds' in ${configFilePath} must be a number and at least ${minInterval} seconds. Current value: ${config.commitIntervalSeconds}`);
   }
-   // Removed watchPaths validation
 
   console.log("Final configuration:", config);
   return config;
@@ -127,12 +126,11 @@ async function runInit() {
     // 1. Create .auto-committer/config.yaml template (without watchPaths)
     if (!fs.existsSync(configFilePath)) {
         const configToWrite = { ...DEFAULT_CONFIG, autoPush: enableAutoPush };
-        // delete configToWrite.watchPaths; // Ensure watchPaths is not in the default written file
         const defaultConfigYaml = yaml.dump(configToWrite);
         fs.writeFileSync(configFilePath, `# Auto Committer Configuration File\n\n${defaultConfigYaml}`);
         console.log(`Created default configuration file: ${configFilePath}`);
     } else {
-        console.log(`${configFilePath} already exists. Please manually add/update 'autoPush: ${enableAutoPush}' and remove 'watchPaths' if needed.`);
+        console.log(`${configFilePath} already exists. Please manually add/update 'autoPush: ${enableAutoPush}' if needed.`);
     }
 
     // 2. Create .auto-committer/.env.example template
@@ -174,7 +172,7 @@ async function runInit() {
     const vscodeAnswer = await askQuestion(`Do you want to automatically start Auto Committer when opening this workspace in VS Code? (y/N) `);
 
     if (vscodeAnswer === 'y') {
-        await setupVsCodeTask(projectRoot);
+        await setupVsCodeTask(projectRoot); // Call the corrected setup function
     } else {
         console.log("Skipping VS Code task setup.");
     }
@@ -183,19 +181,22 @@ async function runInit() {
     console.log("\nInitialization complete.");
     console.log(`Next steps:`);
     console.log(`  1. If needed, rename ${envExampleFilePath} to ${envFilePath} and add your OPENAI_API_KEY.`);
-    console.log(`  2. Edit ${configFilePath} to configure interval, autoPush etc. (watchPaths is no longer used).`); // Updated message
-    console.log(`  3. Run 'npx auto-committer start' (or reopen VS Code if you enabled the task).`);
+    console.log(`  2. Edit ${configFilePath} to configure interval, autoPush etc.`);
+    console.log(`  3. Run 'npx auto-committer start' manually or reopen VS Code if you enabled the task.`);
 
 }
 
-// VS Code Task setup remains the same
+// Corrected VS Code Task setup function - Source NVM then run npx
 async function setupVsCodeTask(projectRoot) {
     const vscodeDirPath = path.join(projectRoot, VSCODE_DIR);
     const tasksFilePath = path.join(vscodeDirPath, TASKS_FILE_NAME);
+    // Command to source NVM and then run npx
+    const nvmScriptPath = process.env.NVM_DIR ? `${process.env.NVM_DIR}/nvm.sh` : `${process.env.HOME}/.nvm/nvm.sh`; // Common NVM script paths
+    const commandToRun = `source ${nvmScriptPath} && npx -- auto-committer start`;
     const taskDefinition = {
         label: "Start Auto Committer",
         type: "shell",
-        command: "npx auto-committer start",
+        command: commandToRun,
         isBackground: true,
         problemMatcher: [],
         presentation: {
@@ -203,6 +204,12 @@ async function setupVsCodeTask(projectRoot) {
             panel: "dedicated",
             showReuseMessage: false,
             clear: true
+        },
+        options: { // Ensure bash is used for sourcing
+            shell: {
+                executable: "bash",
+                args: ["-c"]
+            }
         },
         runOptions: {
             runOn: "folderOpen"
@@ -242,6 +249,9 @@ async function setupVsCodeTask(projectRoot) {
         }
 
         fs.writeFileSync(tasksFilePath, JSON.stringify(tasksJson, null, 2));
+        console.log(`VS Code task configured to run: ${commandToRun}`);
+        console.log(`Note: Assumes NVM script is at ${nvmScriptPath}. Adjust if needed.`);
+
 
     } catch (e) {
         console.error(`Failed to create or update ${tasksFilePath}:`, e);

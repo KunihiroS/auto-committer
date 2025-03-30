@@ -4,11 +4,11 @@
   "description": "Automatically stages and commits changes in a Git repository with LLM-generated messages.",
   "main": "src/index.js",
   "bin": {
-    "auto-committer": "src/cli.js"
+    "auto-committer": "cli.js"
   },
   "scripts": {
-    "start": "node src/cli.js start",
-    "init": "node src/cli.js init",
+    "start": "node cli.js start",
+    "init": "node cli.js init",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
