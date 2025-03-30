@@ -21,7 +21,6 @@
   "author": "KunihiroS",
   "license": "MIT",
   "dependencies": {
-    "chokidar": "^3.5.3",
     "dotenv": "^16.3.1",
     "js-yaml": "^4.1.0",
     "openai": "^4.20.1"

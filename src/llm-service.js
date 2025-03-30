@@ -1,7 +1,7 @@
 // This file handles interaction with the LLM service.
 
 // Responsibilities:
-// - Load LLM provider and API key/config from environment variables or config file.
+// - Load LLM provider and API key/config from environment variables (loaded from .autocommit.env by config-loader).
 // - Format the prompt using the Git diff output.
 // - Send request to the configured LLM API (e.g., OpenAI).
 // - Parse the response to extract the generated commit message.
