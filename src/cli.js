@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 // This file handles command-line argument parsing and execution.
 const { start, runInit } = require('./index'); // Import functions from index
 
