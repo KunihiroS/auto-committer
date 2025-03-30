@@ -24,7 +24,18 @@ function createPrompt(diff) {
     const MAX_DIFF_LENGTH = 128000; // Adjust based on model context window and desired token usage
     const truncatedDiff = diff.length > MAX_DIFF_LENGTH ? diff.substring(0, MAX_DIFF_LENGTH) + "\n... (diff truncated)" : diff;
 
-    return `Generate a concise Git commit message (around 50 characters, imperative mood, present tense) for the following code changes:\n\n\`\`\`diff\n${truncatedDiff}\n\`\`\`\n\nCommit message:`;
+    // More detailed prompt requesting Conventional Commits style
+    return `Generate a detailed Git commit message for the following code changes. Follow the Conventional Commits specification (https://www.conventionalcommits.org/).
+Determine the appropriate type (feat, fix, chore, refactor, style, test, docs, build, ci, perf).
+Include a concise subject line (imperative mood, present tense, max 50 chars).
+If applicable, provide a longer body explaining the 'what' and 'why' of the changes.
+Analyze the diff below to generate the message.
+
+\`\`\`diff
+${truncatedDiff}
+\`\`\`
+
+Commit message (type: subject\n\nbody):`;
 }
 
 async function generateCommitMessage(diff, llmConfig) {
@@ -52,9 +63,9 @@ async function generateCommitMessage(diff, llmConfig) {
             ],
             model: model,
             temperature: options.temperature || 0.7, // Default temperature if not specified
-            max_tokens: 4096, // Limit response length
+            max_tokens: 256, // Increased slightly for potentially longer body, but still reasonable
             n: 1, // Generate one message
-            stop: ["\n"], // Stop generation at newline if possible
+            // stop: ["\n"], // Removing stop sequence to allow multi-line messages more freely
             ...options // Spread any other options from config
         });
 
