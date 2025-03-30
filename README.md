@@ -1,105 +1,105 @@
 # Auto Committer
 
-## 概要
+## Overview
 
-Auto Committer は、Gitで管理されているソフトウェアプロジェクトのローカルリポジトリに対して、**開発者の手動操作なしに変更のステージングとローカルコミットを自動で行う** CLI ツールです。コミットメッセージは**LLM（大規模言語モデル）を活用して自動生成**します。オプションで、コミット後に自動的に `git push` を実行することも可能です。
+Auto Committer is a CLI tool that **automatically stages changes and creates local commits without manual developer intervention** for software projects managed with Git in a local repository. Commit messages are **automatically generated using an LLM (Large Language Model)**. Optionally, it can also automatically execute `git push` after committing.
 
-## 目的
+## Purpose
 
-開発プロセスにおいて、頻繁な手動でのステージングやコミット作業は煩雑であり、コミットメッセージの質を維持することも課題となります。このツールは、これらの作業を自動化することで、開発者の負担を軽減し、より本質的な開発作業に集中できる環境を提供することを目指します。また、LLMによるコミットメッセージ生成により、一貫性のある分かりやすいコミット履歴の維持を支援します。
+In the development process, frequent manual staging and committing can be tedious, and maintaining the quality of commit messages is also a challenge. This tool aims to automate these tasks, reducing the burden on developers and allowing them to focus on more essential development work. Additionally, LLM-generated commit messages help maintain a consistent and understandable commit history.
 
-## 主な機能
+## Key Features
 
-*   **定期間隔実行:** 設定ファイルで指定された**時間間隔**（デフォルト: 300秒、最低 180秒）ごとに、自動コミット処理を実行します。
-*   **自動ステージング・コミット:** 定期間隔で実行される処理の中で、`.gitignore` に記載されていない**全ての変更**を自動的にステージング (`git add .`) し、ローカルコミット (`git commit`) を実行します。変更がない場合はコミットしません。コミット対象は `.gitignore` で制御します。
-*   **LLMによるコミットメッセージ生成:** コミット対象の差分 (`git diff --staged`) を基に、設定されたLLM (現在は OpenAI API のみサポート) を利用して適切なコミットメッセージを自動生成します。生成されたメッセージには設定された接頭辞（デフォルト: `[Auto commit]`）が付与されます。
-*   **カウントダウン表示:** `start` コマンドを実行したターミナルに、次回の自動コミット実行までの残り時間を秒単位でカウントダウン表示します。
-*   **自動プッシュ (オプション):** 設定ファイル (`autoPush: true`) または `init` 時の対話で有効にした場合、自動コミット成功後に自動で `git push` を実行します（現在のブランチに対して `origin` リモートへ）。
+*   **Periodic Execution:** Executes the auto-commit process at a **time interval** specified in the configuration file (default: 300 seconds, minimum 180 seconds).
+*   **Automatic Staging & Committing:** During the periodic execution, it automatically stages (`git add .`) **all changes not listed in `.gitignore`** and creates a local commit (`git commit`). No commit is made if there are no changes. The commit scope is controlled by `.gitignore`.
+*   **LLM-Generated Commit Messages:** Generates appropriate commit messages based on the staged diff (`git diff --staged`) using the configured LLM (currently only OpenAI API is supported). A configured prefix (default: `[Auto commit]`) is added to the generated messages.
+*   **Countdown Display:** Displays a countdown in seconds until the next auto-commit execution in the terminal where the `start` command was run.
+*   **Automatic Push (Optional):** If enabled via the configuration file (`autoPush: true`) or during the `init` interactive setup, it automatically executes `git push` after a successful auto-commit (pushes the current branch to the `origin` remote).
 
-## 技術スタック
+## Tech Stack
 
-*   **開発言語:** Node.js (v18.0.0 以上)
-*   **パッケージマネージャー:** npm (または yarn, pnpm)
-*   **実行環境:** `npx` を利用した CLI ツール
-*   **主な依存ライブラリ:**
-    *   `js-yaml`: 設定ファイル (`config.yaml`) の解析
-    *   `dotenv`: 環境変数ファイル (`.env`) の読み込み
-    *   `openai`: OpenAI API との連携
-*   **設定ファイル:**
-    *   `.auto-committer/config.yaml`: 実行間隔、LLM設定、自動プッシュ設定など
-    *   `.auto-committer/.env`: APIキーなどの環境変数
+*   **Development Language:** Node.js (v18.0.0 or higher)
+*   **Package Manager:** npm (or yarn, pnpm)
+*   **Execution Environment:** CLI tool runnable via `npx`
+*   **Key Dependencies:**
+    *   `js-yaml`: Parsing the configuration file (`config.yaml`)
+    *   `dotenv`: Loading environment variables (`.env`)
+    *   `openai`: Interacting with the OpenAI API
+*   **Configuration Files:**
+    *   `.auto-committer/config.yaml`: Execution interval, LLM settings, auto-push settings, etc.
+    *   `.auto-committer/.env`: Environment variables such as API keys.
 
-## 導入手順
+## Installation and Usage
 
-1.  **前提:**
-    *   Node.js (v18.0.0 以上) および npm (または yarn, pnpm) がインストールされていること。
-    *   Git がインストールされていること。
-    *   OpenAI API キーを取得済みであること。
-2.  **初期セットアップ (プロジェクトごと):**
-    *   対象の Git リポジトリのルートディレクトリで、以下のコマンドを実行し、Auto Committer を利用するための初期設定を行います。
+1.  **Prerequisites:**
+    *   Node.js (v18.0.0 or higher) and npm (or yarn, pnpm) installed.
+    *   Git installed.
+    *   An OpenAI API key obtained.
+2.  **Initial Setup (Per Project):**
+    *   In the root directory of your target Git repository, run the following command to perform the initial setup for Auto Committer:
     ```bash
     npx auto-committer init
     ```
-    *   このコマンドは以下の処理を行います:
-        *   `.auto-committer/` ディレクトリを作成します。
-        *   **設定ファイルテンプレートの生成 (in `.auto-committer/`):**
-            *   `config.yaml`: 実行間隔、LLM設定、自動プッシュ設定などを記述するためのテンプレート。
-            *   `.env.example`: OpenAI APIキーなどを設定するためのテンプレート。
-        *   **`.gitignore` の更新:** `.auto-committer/.env` ファイルを Git 管理対象外にするため、`.gitignore` に `.auto-committer/.env` を追記 (ファイルがなければ生成)。
-        *   **自動プッシュ設定 (対話式):**
-             *   コマンド実行中に「自動コミット後に自動で 'git push' を実行しますか？ (y/N) 警告: 不完全なコードがpushされる可能性があります。」のように確認されます。
-             *   `y` と回答すると、生成される `config.yaml` の `autoPush` が `true` に設定されます。
-        *   **VS Code 自動起動設定 (対話式):**
-            *   コマンド実行中に「VS Code でこのワークスペースを開いた際に自動で Auto Committer を起動しますか？ (y/N)」のように確認されます。
-            *   `y` と回答すると、`.vscode/tasks.json` に Auto Committer を自動起動するタスクが追加されます。
-3.  **API キー設定:**
-    *   生成された `.auto-committer/.env.example` ファイルを `.auto-committer/.env` にリネームします。
-    *   `.auto-committer/.env` ファイルを開き、`OPENAI_API_KEY` にご自身の OpenAI API キーを記述します。
+    *   This command performs the following actions:
+        *   Creates the `.auto-committer/` directory.
+        *   **Generates configuration file templates (in `.auto-committer/`):**
+            *   `config.yaml`: Template for specifying execution interval, LLM settings, auto-push settings, etc.
+            *   `.env.example`: Template for setting the OpenAI API key, etc.
+        *   **Updates `.gitignore`:** Adds `.auto-committer/.env` to `.gitignore` to prevent the environment file from being tracked by Git (creates `.gitignore` if it doesn't exist).
+        *   **Auto Push Setup (Interactive):**
+             *   Prompts you during execution: "Enable automatic 'git push' after each commit? (y/N) WARNING: This might push incomplete work..."
+             *   If you answer `y`, `autoPush` will be set to `true` in the generated `config.yaml`.
+        *   **VS Code Auto-Start Setup (Interactive):**
+            *   Prompts you during execution: "Do you want to automatically start Auto Committer when opening this workspace in VS Code? (y/N)"
+            *   If you answer `y`, a task to automatically start Auto Committer will be added to `.vscode/tasks.json`.
+3.  **API Key Configuration:**
+    *   Rename the generated `.auto-committer/.env.example` file to `.auto-committer/.env`.
+    *   Open the `.auto-committer/.env` file and enter your OpenAI API key after `OPENAI_API_KEY=`.
     ```dotenv
     # .auto-committer/.env
     OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     ```
-4.  **設定:**
-    *   生成された `.auto-committer/config.yaml` ファイルを開き、必要に応じて以下の項目を編集します。
-        *   `commitIntervalSeconds`: 自動コミットを実行する**間隔**を秒単位で指定します (デフォルト: `300`, 最低 `180`)。
-        *   `llm`: 使用する LLM プロバイダー (`openai`) やモデル名 (`gpt-4o-mini` など) を指定します。
-        *   `commitPrefix`: 自動コミットメッセージに付与する接頭辞 (任意)。
-        *   `autoPush`: 自動コミット後に `git push` を実行するかどうか (`true` または `false`)。
+4.  **Configuration:**
+    *   Open the generated `.auto-committer/config.yaml` file and edit the following items as needed:
+        *   `commitIntervalSeconds`: Specify the **interval** in seconds for executing auto-commits (default: `300`, minimum: `180`).
+        *   `llm`: Specify the LLM provider (`openai`) and model name (`gpt-4o-mini`, etc.).
+        *   `commitPrefix`: Optional prefix to add to auto-generated commit messages.
+        *   `autoPush`: Whether to execute `git push` after auto-commit (`true` or `false`).
     ```yaml
-    # .auto-committer/config.yaml 例
-    commitIntervalSeconds: 300 # 5分ごと
+    # .auto-committer/config.yaml example
+    commitIntervalSeconds: 300 # Every 5 minutes
     llm:
       provider: openai
       model: gpt-4o-mini
     # commitPrefix: "[Auto]"
-    autoPush: false # init時に 'n' を選択した場合
+    autoPush: false # If 'n' was selected during init
     ```
-5.  **実行開始:**
-    *   **VS Code で自動起動する場合 (推奨):** `init` 時に自動起動を設定した場合、VS Code でワークスペースを開くと自動的にバックグラウンドでプロセスが開始されます。VS Code のターミナルパネルで実行状況を確認できます。
-    *   **手動で起動する場合:** プロジェクトルートで以下のコマンドを実行し、**現在のターミナル上で**定期間隔コミットプロセスを起動します。
+5.  **Start Execution:**
+    *   **With VS Code Auto-Start (Recommended):** If you enabled auto-start during `init`, the process will start automatically in the background when you open the workspace in VS Code. You can monitor its status in the VS Code Terminal panel.
+    *   **Manual Start:** In the project root directory, run the following command to start the periodic commit process **in the current terminal**:
     ```bash
     npx auto-committer start
     ```
-    *   プロセスはフォアグラウンドで実行され、次回のコミットまでのカウントダウンや、コミット実行時のログなどがターミナルに表示されます。
-    *   **注意 (手動起動の場合):** このターミナルセッションで `Ctrl+C` を押すか、ターミナルを閉じるとプロセスも終了します。監視を続ける間は、このターミナルを開いたままにしておく必要があります。
-6.  **開発作業:**
-    *   `start` コマンド実行後 (または VS Code 自動起動後)、設定された時間間隔ごとに、ツールが自動的にリポジトリ内の変更をステージングし、変更があればコミット（LLMによるメッセージ生成付き）を実行します。
-7.  **実行停止:**
-    *   **VS Code で自動起動した場合:** VS Code のターミナルパネルから手動でタスクを終了させるか、VS Code を閉じます。
-    *   **手動で起動した場合:** `start` コマンドを実行したターミナルで `Ctrl+C` を押してプロセスを停止します。
+    *   The process runs in the foreground, displaying a countdown to the next commit and logs for commit executions.
+    *   **Note (Manual Start):** The process will terminate if you press `Ctrl+C` in this terminal session or close the terminal. You need to keep this terminal open while monitoring is active.
+6.  **Development Workflow:**
+    *   After running the `start` command (or after VS Code auto-start), the tool will automatically stage changes in your repository at the configured interval and, if changes exist, create a commit with an LLM-generated message.
+7.  **Stop Execution:**
+    *   **If started via VS Code Task:** Terminate the task manually from the VS Code Terminal panel or close VS Code.
+    *   **If started manually:** Press `Ctrl+C` in the terminal where the `start` command is running.
 
-## 注意点
+## Important Notes
 
-*   **コミット履歴の粒度:** 定期間隔での自動コミットは、作業途中の不完全な状態でコミットされる可能性があります。また、前回のコミットからの差分が大きくなりすぎると、LLMによる適切なメッセージ生成が難しくなる場合があります。実行間隔 (`commitIntervalSeconds`) の調整が重要です。**なお、システムの安定性と予期せぬ動作を防ぐため、実行間隔は最低 180 秒（3分）以上に設定する必要があります。**
-*   **コミット対象:** このツールは `.gitignore` に従い、追跡対象となっている全てのファイルの変更をコミットします。特定のファイルのみを自動コミット対象とすることはできません。コミットしたくないファイルは `.gitignore` に追加してください。
-*   **パフォーマンス:** 定期的な `git add .` や `git diff --staged` は、大規模なリポジトリではパフォーマンスに影響を与える可能性があります。
-*   **LLMのコストと精度:** OpenAI APIなどの外部LLMを利用する場合、定期的なAPI呼び出しによるコスト増に注意が必要です。変更がない場合はコミットもLLM呼び出しも行われませんが、頻繁に変更がある場合はコストが増加します。
-*   **自動プッシュのリスク:** `autoPush: true` を設定した場合、作業途中のコードが意図せずリモートにプッシュされる可能性があります。また、リモートとの競合が発生した場合、`git push` が失敗し、手動での解決が必要になります。自動プッシュを有効にする場合は、これらのリスクを十分に理解し、適切なブランチ戦略やチームでの合意のもとで使用してください。SSHキーやHTTPSトークンなど、`git push` に必要な認証情報が環境に設定されている必要があります。
+*   **Commit Granularity:** Automatic commits at regular intervals might result in commits containing incomplete work. Adjusting the `commitIntervalSeconds` is crucial. **Furthermore, to ensure system stability and prevent unexpected behavior, the execution interval must be set to at least 180 seconds (3 minutes).**
+*   **Commit Scope:** This tool commits all tracked file changes according to `.gitignore`. It cannot target specific files for auto-commit. Add files you don't want committed to `.gitignore`.
+*   **Performance:** Periodic `git add .` and `git diff --staged` might impact performance in very large repositories.
+*   **LLM Costs and Accuracy:** Using external LLMs like the OpenAI API incurs costs based on usage. While no commit or LLM call occurs if there are no changes, frequent changes will increase costs. Using local LLMs requires setup and consideration of model accuracy.
+*   **Auto Push Risks:** Enabling `autoPush: true` might push unfinished code to the remote repository unintentionally. If conflicts occur with the remote, `git push` will fail, requiring manual resolution. Use auto-push with a full understanding of these risks, preferably with a suitable branching strategy and team agreement. Ensure necessary authentication (SSH keys, HTTPS tokens) for `git push` is configured in your environment.
 
-## 既知の課題・今後の改善点
+## Known Issues / Future Improvements
 
-*   ローカルLLM (Ollama等) のサポート
-*   プッシュ対象のリモート/ブランチの指定機能
-*   より詳細なエラーハンドリングと通知
-*   コミット間の差分が大きい場合のLLMプロンプト最適化
-*   テストコードの拡充
+*   Support for local LLMs (Ollama, etc.)
+*   Ability to specify the remote/branch for auto-push
+*   More detailed error handling and notifications
+*   Optimization of LLM prompts for very large diffs
+*   Expansion of test code coverage
