@@ -46,7 +46,7 @@ In the development process, frequent manual staging and committing can be tediou
 2.  **Initial Setup (Per Project):**
     *   In the root directory of your target Git repository, run the following command to perform the initial setup for Auto Committer:
     ```bash
-    npx auto-committer init
+    npx @kunihiros/auto-committer init
     ```
     *   This command performs the following actions:
         *   Creates the `.auto-committer/` directory.
@@ -86,7 +86,7 @@ In the development process, frequent manual staging and committing can be tediou
     *   **With VS Code Auto-Start (Recommended):** If you enabled auto-start during `init`, the process will start automatically in the background when you open the workspace in VS Code. You can monitor its status in the VS Code Terminal panel.
     *   **Manual Start:** In the project root directory, run the following command to start the periodic commit process **in the current terminal**:
     ```bash
-    npx auto-committer start
+    npx @kunihiros/auto-committer start
     ```
     *   The process runs in the foreground, displaying a countdown to the next commit and logs for commit executions.
     *   **Note (Manual Start):** The process will terminate if you press `Ctrl+C` in this terminal session or close the terminal. You need to keep this terminal open while monitoring is active.

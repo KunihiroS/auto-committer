@@ -106,12 +106,10 @@ async function runInit() {
     const gitignoreEntry = `${CONFIG_DIR_NAME}/${ENV_FILE_NAME}`;
 
     // Determine the path of the currently executing script (cli.js)
-    // process.argv[1] usually holds this path when executed via node or npx link
     const cliScriptPath = process.argv[1];
     console.log(`Detected cli script path: ${cliScriptPath}`);
     if (!cliScriptPath || !fs.existsSync(cliScriptPath)) {
         console.error("Could not determine the path to cli.js. VS Code task setup might fail.");
-        // Decide how to handle this - maybe skip task setup?
     }
 
 
@@ -196,7 +194,7 @@ async function runInit() {
     console.log(`Next steps:`);
     console.log(`  1. If needed, rename ${envExampleFilePath} to ${envFilePath} and add your OPENAI_API_KEY.`);
     console.log(`  2. Edit ${configFilePath} to configure interval, autoPush etc.`);
-    console.log(`  3. Run 'npx auto-committer start' manually or reopen VS Code if you enabled the task.`);
+    console.log(`  3. Run 'npx @kunihiros/auto-committer start' manually or reopen VS Code if you enabled the task.`); // Corrected command
 
 }
 
@@ -207,7 +205,7 @@ async function setupVsCodeTask(projectRoot, cliScriptPath) {
     // Use node with the detected absolute path to cli.js
     const commandToRun = `node \"${cliScriptPath}\" start`; // Quote path in case of spaces
     const taskDefinition = {
-        label: "Start Auto Committer",
+        label: "Start Auto Committer", // Keep label simple
         type: "shell",
         command: commandToRun,
         isBackground: true,

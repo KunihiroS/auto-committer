@@ -1,11 +1,17 @@
 {
-  "name": "auto-committer",
+  "name": "@kunihiros/auto-committer",
   "version": "0.1.0",
   "description": "Automatically stages and commits changes in a Git repository with LLM-generated messages.",
   "main": "src/index.js",
   "bin": {
     "auto-committer": "cli.js"
   },
+  "files": [
+    "cli.js",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "node cli.js start",
     "init": "node cli.js init",
@@ -16,7 +22,9 @@
     "commit",
     "automation",
     "llm",
-    "ai"
+    "ai",
+    "auto",
+    "committer"
   ],
   "author": "KunihiroS",
   "license": "MIT",
