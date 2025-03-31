@@ -105,6 +105,16 @@ async function runInit() {
     const gitignorePath = path.join(projectRoot, '.gitignore');
     const gitignoreEntry = `${CONFIG_DIR_NAME}/${ENV_FILE_NAME}`;
 
+    // Determine the path of the currently executing script (cli.js)
+    // process.argv[1] usually holds this path when executed via node or npx link
+    const cliScriptPath = process.argv[1];
+    console.log(`Detected cli script path: ${cliScriptPath}`);
+    if (!cliScriptPath || !fs.existsSync(cliScriptPath)) {
+        console.error("Could not determine the path to cli.js. VS Code task setup might fail.");
+        // Decide how to handle this - maybe skip task setup?
+    }
+
+
     // Ensure config directory exists
     if (!fs.existsSync(configDirPath)) {
         fs.mkdirSync(configDirPath);
@@ -172,7 +182,11 @@ async function runInit() {
     const vscodeAnswer = await askQuestion(`Do you want to automatically start Auto Committer when opening this workspace in VS Code? (y/N) `);
 
     if (vscodeAnswer === 'y') {
-        await setupVsCodeTask(projectRoot); // Call the corrected setup function
+        if (cliScriptPath && fs.existsSync(cliScriptPath)) {
+            await setupVsCodeTask(projectRoot, cliScriptPath); // Pass the detected script path
+        } else {
+             console.error("Skipping VS Code task setup because cli.js path could not be determined.");
+        }
     } else {
         console.log("Skipping VS Code task setup.");
     }
@@ -186,17 +200,12 @@ async function runInit() {
 
 }
 
-// Corrected VS Code Task setup function - Use bash -ic to load NVM
-async function setupVsCodeTask(projectRoot) {
+// VS Code Task setup function now uses the detected script path
+async function setupVsCodeTask(projectRoot, cliScriptPath) {
     const vscodeDirPath = path.join(projectRoot, VSCODE_DIR);
     const tasksFilePath = path.join(vscodeDirPath, TASKS_FILE_NAME);
-    // Command to source NVM using bash -ic, then run npx
-    // This assumes NVM is installed in the standard location and node v22.14.0 is the target
-    // We might need to make the node version dynamic or configurable in the future
-    const nvmScriptPath = "$HOME/.nvm/nvm.sh"; // Common NVM script path
-    const nodeVersion = "v22.14.0"; // Use the version confirmed by the user
-    // Use bash -ic to simulate interactive login, sourcing NVM, using the version, then running npx
-    const commandToRun = `bash -ic ". ${nvmScriptPath} && nvm use ${nodeVersion} && npx -- auto-committer start"`;
+    // Use node with the detected absolute path to cli.js
+    const commandToRun = `node \"${cliScriptPath}\" start`; // Quote path in case of spaces
     const taskDefinition = {
         label: "Start Auto Committer",
         type: "shell",
@@ -204,26 +213,15 @@ async function setupVsCodeTask(projectRoot) {
         isBackground: true,
         problemMatcher: [],
         presentation: {
-            reveal: "silent", // Keep silent for normal operation
+            reveal: "silent",
             panel: "dedicated",
             showReuseMessage: false,
             clear: true
-        },
-        options: {
-            // The command itself now uses bash -ic, so specific shell options here might be redundant
-            // but keeping it for clarity that bash is intended.
-            shell: {
-                executable: "bash",
-                args: ["-c"] // This -c might conflict with the one in commandToRun, let's remove it
-            }
         },
         runOptions: {
             runOn: "folderOpen"
         }
     };
-     // Let's simplify the options as the command itself handles the shell execution context
-     delete taskDefinition.options;
-
 
     try {
         if (!fs.existsSync(vscodeDirPath)) {
@@ -259,8 +257,6 @@ async function setupVsCodeTask(projectRoot) {
 
         fs.writeFileSync(tasksFilePath, JSON.stringify(tasksJson, null, 2));
         console.log(`VS Code task configured to run: ${commandToRun}`);
-        console.log(`Note: Attempts to load NVM and use Node ${nodeVersion}. Ensure NVM script is at ${nvmScriptPath}.`);
-
 
     } catch (e) {
         console.error(`Failed to create or update ${tasksFilePath}:`, e);
