@@ -186,13 +186,17 @@ async function runInit() {
 
 }
 
-// Corrected VS Code Task setup function - Source NVM then run npx
+// Corrected VS Code Task setup function - Use bash -ic to load NVM
 async function setupVsCodeTask(projectRoot) {
     const vscodeDirPath = path.join(projectRoot, VSCODE_DIR);
     const tasksFilePath = path.join(vscodeDirPath, TASKS_FILE_NAME);
-    // Command to source NVM and then run npx
-    const nvmScriptPath = process.env.NVM_DIR ? `${process.env.NVM_DIR}/nvm.sh` : `${process.env.HOME}/.nvm/nvm.sh`; // Common NVM script paths
-    const commandToRun = `source ${nvmScriptPath} && npx -- auto-committer start`;
+    // Command to source NVM using bash -ic, then run npx
+    // This assumes NVM is installed in the standard location and node v22.14.0 is the target
+    // We might need to make the node version dynamic or configurable in the future
+    const nvmScriptPath = "$HOME/.nvm/nvm.sh"; // Common NVM script path
+    const nodeVersion = "v22.14.0"; // Use the version confirmed by the user
+    // Use bash -ic to simulate interactive login, sourcing NVM, using the version, then running npx
+    const commandToRun = `bash -ic ". ${nvmScriptPath} && nvm use ${nodeVersion} && npx -- auto-committer start"`;
     const taskDefinition = {
         label: "Start Auto Committer",
         type: "shell",
@@ -200,21 +204,26 @@ async function setupVsCodeTask(projectRoot) {
         isBackground: true,
         problemMatcher: [],
         presentation: {
-            reveal: "silent",
+            reveal: "silent", // Keep silent for normal operation
             panel: "dedicated",
             showReuseMessage: false,
             clear: true
         },
-        options: { // Ensure bash is used for sourcing
+        options: {
+            // The command itself now uses bash -ic, so specific shell options here might be redundant
+            // but keeping it for clarity that bash is intended.
             shell: {
                 executable: "bash",
-                args: ["-c"]
+                args: ["-c"] // This -c might conflict with the one in commandToRun, let's remove it
             }
         },
         runOptions: {
             runOn: "folderOpen"
         }
     };
+     // Let's simplify the options as the command itself handles the shell execution context
+     delete taskDefinition.options;
+
 
     try {
         if (!fs.existsSync(vscodeDirPath)) {
@@ -250,7 +259,7 @@ async function setupVsCodeTask(projectRoot) {
 
         fs.writeFileSync(tasksFilePath, JSON.stringify(tasksJson, null, 2));
         console.log(`VS Code task configured to run: ${commandToRun}`);
-        console.log(`Note: Assumes NVM script is at ${nvmScriptPath}. Adjust if needed.`);
+        console.log(`Note: Attempts to load NVM and use Node ${nodeVersion}. Ensure NVM script is at ${nvmScriptPath}.`);
 
 
     } catch (e) {
