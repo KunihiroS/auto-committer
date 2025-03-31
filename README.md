@@ -1,4 +1,12 @@
-# Auto Committer
+# Auto Committer (tool for lazy boys and girls)
+
+
+> **⚠️ Important Usage Note**
+>
+> Auto Committer periodically runs `git add`, `git commit`, and `git push` (if enabled) in the background.
+> This tool **does not perform Git repository locking**. Therefore, running manual `git` commands (especially those that modify the state like staging, committing, pushing, or resetting) while Auto Committer is processing can lead to **unexpected behavior, inconsistent commit contents, or errors**.
+>
+> It is strongly recommended to temporarily stop Auto Committer (Ctrl+C in the terminal or stop the VS Code task) before performing significant manual Git operations while it is running.
 
 ## Overview
 
