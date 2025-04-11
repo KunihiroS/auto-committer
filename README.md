@@ -10,6 +10,16 @@
 >
 > なお、Auto Committer は `main` などの作業ブランチには影響を与えず、専用のバックアップブランチ `auto-committer-backup` にのみコミット・プッシュを行います。
 
+## Version up
+
+### 0.2.0
+
+- 安全性向上のため、コミットは `auto-committer-backup` という専用のバックアップブランチに対して行われるようになりました。
+- `main` や `develop` などの作業ブランチには影響を与えません。
+- `auto-committer-backup` ブランチは通常の `git push` により履歴を保持するため、過去のバックアップコミットにロールバックすることも可能です。
+- `.gitignore` に含まれないファイルのみが対象となります。
+- 自動処理中に手動で `main` にプッシュしても、ファイルの破損や衝突は発生せず、ブランチ間の差分として安全に管理されます。
+
 ## Overview
 
 Auto Committer is a CLI tool that **automatically stages changes and creates local commits without manual developer intervention** for software projects managed with Git in a local repository. Commit messages are **automatically generated using an LLM (Large Language Model)**. Optionally, it can also automatically execute `git push` after committing.
@@ -105,16 +115,6 @@ In the development process, frequent manual staging and committing can be tediou
 *   **Performance:** Periodic `git add .` and `git diff --staged` might impact performance in very large repositories.
 *   **LLM Costs and Accuracy:** Using external LLMs like the OpenAI API incurs costs based on usage. While no commit or LLM call occurs if there are no changes, frequent changes will increase costs. Using local LLMs requires setup and consideration of model accuracy.
 *   **Auto Push Risks:** Enabling `autoPush: true` might push unfinished code to the remote repository unintentionally. If conflicts occur with the remote, `git push` will fail, requiring manual resolution. Use auto-push with a full understanding of these risks, preferably with a suitable branching strategy and team agreement. Ensure necessary authentication (SSH keys, HTTPS tokens) for `git push` is configured in your environment.
-
-## Version up
-
-### 0.2.0
-
-- 安全性向上のため、コミットは `auto-committer-backup` という専用のバックアップブランチに対して行われるようになりました。
-- `main` や `develop` などの作業ブランチには影響を与えません。
-- `auto-committer-backup` ブランチは通常の `git push` により履歴を保持するため、過去のバックアップコミットにロールバックすることも可能です。
-- `.gitignore` に含まれないファイルのみが対象となります。
-- 自動処理中に手動で `main` にプッシュしても、ファイルの破損や衝突は発生せず、ブランチ間の差分として安全に管理されます。
 
 ## Known Issues / Future Improvements
 
