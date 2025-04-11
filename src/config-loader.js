@@ -68,7 +68,7 @@ function loadConfig() {
    };
 
   // Validate commitIntervalSeconds
-  const minInterval = 180;
+  const minInterval = 60; // 最小インターバルを60秒に変更
   if (typeof config.commitIntervalSeconds !== 'number' || config.commitIntervalSeconds < minInterval) {
        throw new Error(`'commitIntervalSeconds' in ${configFilePath} must be a number and at least ${minInterval} seconds. Current value: ${config.commitIntervalSeconds}`);
   }

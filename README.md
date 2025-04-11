@@ -30,7 +30,7 @@ In the development process, frequent manual staging and committing can be tediou
 
 ## Key Features
 
-*   **Periodic Execution:** Executes the auto-commit process at a **time interval** specified in the configuration file (default: 300 seconds, minimum 180 seconds).
+*   **Periodic Execution:** Executes the auto-commit process at a **time interval** specified in the configuration file (default: 300 seconds, minimum 60 seconds).
 *   **Automatic Staging & Committing:** During the periodic execution, it automatically stages (`git add .`) **all changes not listed in `.gitignore`** and creates a local commit (`git commit`). No commit is made if there are no changes. The commit scope is controlled by `.gitignore`.
 *   **LLM-Generated Commit Messages:** Generates appropriate commit messages based on the staged diff (`git diff --staged`) using the configured LLM (currently only OpenAI API is supported). A configured prefix (default: `[Auto commit]`) is added to the generated messages.
 *   **Countdown Display:** Displays a countdown in seconds until the next auto-commit execution in the terminal where the `start` command was run.
@@ -81,7 +81,7 @@ In the development process, frequent manual staging and committing can be tediou
     ```
 4.  **Configuration:**
     *   Open the generated `.auto-committer/config.yaml` file and edit the following items as needed:
-        *   `commitIntervalSeconds`: Specify the **interval** in seconds for executing auto-commits (default: `300`, minimum: `180`).
+        *   `commitIntervalSeconds`: Specify the **interval** in seconds for executing auto-commits (default: `300`, minimum: `60`).
         *   `llm`: Specify the LLM provider (`openai`) and model name (`gpt-4o-mini`, etc.).
         *   `commitPrefix`: Optional prefix to add to auto-generated commit messages.
         *   `autoPush`: Whether to execute `git push` after auto-commit (`true` or `false`).
@@ -110,7 +110,7 @@ In the development process, frequent manual staging and committing can be tediou
 
 ## Important Notes
 
-*   **Commit Granularity:** Automatic commits at regular intervals might result in commits containing incomplete work. Adjusting the `commitIntervalSeconds` is crucial. **Furthermore, to ensure system stability and prevent unexpected behavior, the execution interval must be set to at least 180 seconds (3 minutes).**
+*   **Commit Granularity:** Automatic commits at regular intervals might result in commits containing incomplete work. Adjusting the `commitIntervalSeconds` is crucial. **Furthermore, to ensure system stability and prevent unexpected behavior, the execution interval must be set to at least 60 seconds (1 minute).**
 *   **Commit Scope:** This tool commits all tracked file changes according to `.gitignore`. It cannot target specific files for auto-commit. Add files you don't want committed to `.gitignore`.
 *   **Performance:** Periodic `git add .` and `git diff --staged` might impact performance in very large repositories.
 *   **LLM Costs and Accuracy:** Using external LLMs like the OpenAI API incurs costs based on usage. While no commit or LLM call occurs if there are no changes, frequent changes will increase costs. Using local LLMs requires setup and consideration of model accuracy.

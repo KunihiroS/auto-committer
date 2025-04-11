@@ -1,6 +1,8 @@
 const { spawn } = require('child_process');
 const path = require('path');
-
+const fs = require('fs');
+const os = require('os');
+const { mkdtempSync, rmSync } = fs;
 console.log("src/git-handler.js loaded");
 
 // Helper function to run git commands
@@ -35,6 +37,25 @@ function runGitCommand(args, cwd = process.cwd()) {
             reject(new Error(`Failed to execute git command: ${err.message}`));
         });
     });
+}
+
+/**
+ * 一時ディレクトリを作成
+ */
+function createTempDir() {
+    const tmpBase = os.tmpdir();
+    return mkdtempSync(path.join(tmpBase, 'auto-committer-backup-'));
+}
+
+/**
+ * ディレクトリが存在するか
+ */
+function dirExists(dirPath) {
+    try {
+        return fs.statSync(dirPath).isDirectory();
+    } catch {
+        return false;
+    }
 }
 /**
  * 指定したブランチが存在するか確認
@@ -106,37 +127,73 @@ async function getDiff() {
     }
 }
 
+/**
+ * worktree方式で全ファイルコピー＆コミット
+ */
 async function commitChanges(message) {
     console.log(`Committing changes with message: "${message}"...`);
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
         throw new Error("Commit message cannot be empty.");
     }
-    let originalBranch = null;
+    const backupBranch = 'auto-committer-backup';
+    const repoRoot = process.cwd();
+    const tempDir = createTempDir();
+    const ignoreList = ['.git', '.gitignore', '.auto-committer', 'node_modules'];
     try {
-        // 現在のブランチを保存し、バックアップブランチへ切り替え
-        const { backupBranch, originalBranch: orig } = await ensureAndCheckoutBackupBranch();
-        originalBranch = orig;
-        await runGitCommand(['commit', '-m', message]);
-        console.log("Commit successful.");
+        // バックアップブランチがなければ作成
+        const exists = await branchExists(backupBranch);
+        if (!exists) {
+            const currentBranch = await getCurrentBranch();
+            await runGitCommand(['branch', backupBranch, currentBranch]);
+        }
+        // worktree追加
+        await runGitCommand(['worktree', 'add', tempDir, backupBranch]);
+        // worktree内の全ファイル削除（.gitは除く）
+        for (const file of fs.readdirSync(tempDir)) {
+            if (file === '.git') continue;
+            const target = path.join(tempDir, file);
+            rmSync(target, { recursive: true, force: true });
+        }
+        // 作業ディレクトリの全ファイルをコピー（ignoreList除く）
+        function copyRecursive(src, dest) {
+            if (ignoreList.some(ig => src.endsWith(ig))) return;
+            const stat = fs.statSync(src);
+            if (stat.isDirectory()) {
+                if (!fs.existsSync(dest)) fs.mkdirSync(dest);
+                for (const child of fs.readdirSync(src)) {
+                    copyRecursive(path.join(src, child), path.join(dest, child));
+                }
+            } else {
+                fs.copyFileSync(src, dest);
+            }
+        }
+        for (const file of fs.readdirSync(repoRoot)) {
+            if (ignoreList.includes(file)) continue;
+            copyRecursive(path.join(repoRoot, file), path.join(tempDir, file));
+        }
+        // add/commit
+        await runGitCommand(['add', '.'], tempDir);
+        // 変更がなければコミットしない
+        const status = await runGitCommand(['status', '--porcelain'], tempDir);
+        if (!status || status.trim() === '') {
+            console.log("No changes to commit in this cycle (worktree snapshot identical).");
+            await runGitCommand(['worktree', 'remove', tempDir, '--force']);
+            rmSync(tempDir, { recursive: true, force: true });
+            return;
+        }
+        await runGitCommand(['commit', '-m', message], tempDir);
+        console.log("Backup commit successful in worktree (full snapshot).");
+        await runGitCommand(['worktree', 'remove', tempDir, '--force']);
+        rmSync(tempDir, { recursive: true, force: true });
     } catch (error) {
-        console.error("Error during commit:", error.message);
-        if (error.message.includes("nothing to commit")) {
-             console.log("Nothing to commit, working tree clean.");
-             // 元のブランチに戻す
-             if (originalBranch) {
-                 await checkoutBranch(originalBranch);
-             }
-             return; // Not an error in this context
-        }
-        // エラー時も元のブランチに戻す
-        if (originalBranch) {
-            await checkoutBranch(originalBranch);
-        }
+        console.error("Error during backup commit (worktree full snapshot):", error.message);
+        try {
+            await runGitCommand(['worktree', 'remove', tempDir, '--force']);
+        } catch {}
+        try {
+            rmSync(tempDir, { recursive: true, force: true });
+        } catch {}
         throw error;
-    }
-    // コミット後、元のブランチに戻す
-    if (originalBranch) {
-        await checkoutBranch(originalBranch);
     }
 }
 
