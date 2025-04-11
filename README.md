@@ -1,24 +1,24 @@
-# Auto Committer (tool for lazy boys and girls)
+# Auto Committer (tool for lazy boys👨 and girls👧)
 
 
 > **⚠️ Important Usage Note**
 >
-> Auto Committer はバックグラウンドで `git add`, `git commit`, `git push`（有効な場合）を定期的に実行します。
-> Git のロック機構は使用していないため、**同時に手動で Git 操作（ステージング、コミット、プッシュ、リセットなど）を行うと、まれにコミット内容が意図しない状態になる可能性があります**。
+> Auto Committer periodically runs `git add`, `git commit`, and `git push` (if enabled) in the background.
+> Since it doesn't use Git's locking mechanism, **concurrent manual Git operations (staging, committing, pushing, resetting, etc.) might rarely lead to unintended commit states**.
 >
-> 可能性は低いですが、不安な場合や大きな変更を行う際は、Auto Committer を一時停止（例: Ctrl+C または VS Code タスクの停止）することをおすすめします。
+> Although unlikely, if you are concerned or performing significant changes, we recommend temporarily pausing Auto Committer (e.g., Ctrl+C or stopping the VS Code task).
 >
-> なお、Auto Committer は `main` などの作業ブランチには影響を与えず、専用のバックアップブランチ `auto-committer-backup` にのみコミット・プッシュを行います。
+> Note that Auto Committer does not affect working branches like `main`. It only commits and pushes to a dedicated backup branch named `auto-committer-backup`.
 
-## Version up
+## Version History
 
 ### 0.2.0
 
-- 安全性向上のため、コミットは `auto-committer-backup` という専用のバックアップブランチに対して行われるようになりました。
-- `main` や `develop` などの作業ブランチには影響を与えません。
-- `auto-committer-backup` ブランチは通常の `git push` により履歴を保持するため、過去のバックアップコミットにロールバックすることも可能です。
-- `.gitignore` に含まれないファイルのみが対象となります。
-- 自動処理中に手動で `main` にプッシュしても、ファイルの破損や衝突は発生せず、ブランチ間の差分として安全に管理されます。
+- **Enhanced Safety:** Commits are now made exclusively to a dedicated backup branch named `auto-committer-backup`.
+- Your primary working branches (e.g., `main`, `develop`) remain unaffected.
+- The `auto-committer-backup` branch maintains its history through standard `git push`, allowing rollbacks to previous backup commits.
+- Only files not listed in `.gitignore` are included in commits.
+- Manually pushing to `main` while the tool is running will not cause file corruption or conflicts; differences are safely managed between branches.
 
 ## Overview
 

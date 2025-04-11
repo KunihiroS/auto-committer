@@ -1,6 +1,6 @@
 {
   "name": "@kunihiros/auto-committer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Automatically stages and commits changes in a Git repository with LLM-generated messages.",
   "main": "src/index.js",
   "bin": {
