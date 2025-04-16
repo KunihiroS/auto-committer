@@ -6,12 +6,17 @@ const { mkdtempSync, rmSync } = fs;
 console.log("src/git-handler.js loaded");
 
 // Helper function to run git commands
-function runGitCommand(args, cwd = process.cwd()) {
+function runGitCommand(args, cwd = process.cwd(), stdin = null) {
     return new Promise((resolve, reject) => {
         console.log(`Running: git ${args.join(' ')}`); // Log the command being run
-        const gitProcess = spawn('git', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+        const gitProcess = spawn('git', args, { cwd, stdio: [stdin ? 'pipe' : 'ignore', 'pipe', 'pipe'] });
         let stdoutData = '';
         let stderrData = '';
+
+        if (stdin) {
+            gitProcess.stdin.write(stdin);
+            gitProcess.stdin.end();
+        }
 
         gitProcess.stdout.on('data', (data) => {
             stdoutData += data.toString();
@@ -23,7 +28,6 @@ function runGitCommand(args, cwd = process.cwd()) {
 
         gitProcess.on('close', (code) => {
             if (code === 0) {
-                // console.log(`git ${args.join(' ')} stdout:`, stdoutData.trim()); // Optional: log stdout
                 resolve(stdoutData.trim());
             } else {
                 console.error(`Git command "git ${args.join(' ')}" failed with code ${code}`);
@@ -57,6 +61,7 @@ function dirExists(dirPath) {
         return false;
     }
 }
+
 /**
  * 指定したブランチが存在するか確認
  */
@@ -200,8 +205,6 @@ async function commitChanges(message) {
 async function getCurrentBranch() {
     console.log("Getting current branch name...");
     try {
-        // Using 'git branch --show-current' which is available in Git 2.22+
-        // For older Git versions, 'git rev-parse --abbrev-ref HEAD' could be used
         const branchName = await runGitCommand(['branch', '--show-current']);
         if (!branchName) {
             throw new Error("Could not determine current branch. Are you in a detached HEAD state?");
@@ -215,7 +218,6 @@ async function getCurrentBranch() {
 }
 
 async function pushChanges(remote = 'origin', branch = null) {
-    // v0.2.0: 必ず auto-committer-backup ブランチをプッシュ
     const targetBranch = 'auto-committer-backup';
     console.log(`Pushing changes to ${remote}/${targetBranch}...`);
     try {
@@ -228,8 +230,43 @@ async function pushChanges(remote = 'origin', branch = null) {
         } else if (error.message.includes("does not appear to be a git repository") || error.message.includes("could not read from remote repository")) {
              console.error("Push failed. Could not connect to the remote repository. Check remote URL and network connection.");
         }
-        // Don't re-throw here? Or should the main loop know about push failures?
-        // Let's not re-throw for now, just log the error.
+    }
+}
+
+// Function to untrack files that are tracked but now match .gitignore rules
+async function untrackIgnoredFiles() {
+    console.log("Checking for tracked files that should be ignored...");
+    try {
+        const trackedFilesOutput = await runGitCommand(['ls-files', '-z']);
+        if (!trackedFilesOutput) {
+            console.log("No files are currently tracked.");
+            return;
+        }
+
+        const ignoredTrackedFilesOutput = await runGitCommand(['check-ignore', '--stdin', '-z'], process.cwd(), trackedFilesOutput);
+
+        if (!ignoredTrackedFilesOutput) {
+            console.log("No tracked files match .gitignore rules.");
+            return; 
+        }
+
+        const filesToUntrack = ignoredTrackedFilesOutput.split('\0').filter(f => f); 
+
+        if (filesToUntrack.length === 0) {
+            console.log("No tracked files match .gitignore rules after filtering.");
+            return;
+        }
+
+        console.log(`Found ${filesToUntrack.length} tracked file(s) matching .gitignore:`);
+        filesToUntrack.forEach(file => console.log(`  - ${file}`));
+
+        const rmArgs = ['rm', '--cached', '-z', '--', ...filesToUntrack];
+        await runGitCommand(rmArgs);
+
+        console.log("Successfully untracked the above files.");
+
+    } catch (error) {
+        console.error("Error checking or untracking ignored files:", error.message);
     }
 }
 
@@ -237,5 +274,6 @@ module.exports = {
   stageChanges,
   getDiff,
   commitChanges,
-  pushChanges, // Export the new function
+  pushChanges, 
+  untrackIgnoredFiles, 
 };

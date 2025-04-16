@@ -23,6 +23,9 @@ async function handleCommitCycle() {
     try {
         // config is loaded at start, reload if needed: config = configLoader.loadConfig();
 
+        // 0. Untrack files newly added to .gitignore
+        await gitHandler.untrackIgnoredFiles();
+
         // 1. Stage changes
         await gitHandler.stageChanges();
 
