@@ -84,6 +84,3 @@ web_modules/
 
 # Auto Committer specific
 .auto-committer/.env
-
-# Ignore Markdown files
-*.md
