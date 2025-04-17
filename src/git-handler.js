@@ -133,72 +133,73 @@ async function getDiff() {
 }
 
 /**
- * worktree方式で全ファイルコピー＆コミット
+ * 低レベルコマンドを使用して、現在のインデックス状態をバックアップブランチにコミット
  */
 async function commitChanges(message) {
-    console.log(`Committing changes with message: "${message}"...`);
+    console.log(`Committing staged changes with message: "${message}"...`);
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
         throw new Error("Commit message cannot be empty.");
     }
+
     const backupBranch = 'auto-committer-backup';
-    const repoRoot = process.cwd();
-    const tempDir = createTempDir();
-    const ignoreList = ['.git', '.gitignore', '.auto-committer', 'node_modules'];
+
     try {
-        // バックアップブランチがなければ作成
-        const exists = await branchExists(backupBranch);
-        if (!exists) {
-            const currentBranch = await getCurrentBranch();
-            await runGitCommand(['branch', backupBranch, currentBranch]);
+        // 1. 現在のインデックス状態からツリーオブジェクトを作成
+        const stagedIndexTree = await runGitCommand(['write-tree']);
+        if (!stagedIndexTree) {
+            throw new Error("Failed to write git tree from index.");
         }
-        // worktree追加
-        await runGitCommand(['worktree', 'add', tempDir, backupBranch]);
-        // worktree内の全ファイル削除（.gitは除く）
-        for (const file of fs.readdirSync(tempDir)) {
-            if (file === '.git') continue;
-            const target = path.join(tempDir, file);
-            rmSync(target, { recursive: true, force: true });
-        }
-        // 作業ディレクトリの全ファイルをコピー（ignoreList除く）
-        function copyRecursive(src, dest) {
-            if (ignoreList.some(ig => src.endsWith(ig))) return;
-            const stat = fs.statSync(src);
-            if (stat.isDirectory()) {
-                if (!fs.existsSync(dest)) fs.mkdirSync(dest);
-                for (const child of fs.readdirSync(src)) {
-                    copyRecursive(path.join(src, child), path.join(dest, child));
-                }
-            } else {
-                fs.copyFileSync(src, dest);
+        console.log(`Created tree object for staged changes: ${stagedIndexTree}`);
+
+        // 2. バックアップブランチが存在するか確認し、親コミットを決定
+        const backupBranchExists = await branchExists(backupBranch);
+        let parentCommitArgs = [];
+        let currentBackupTree = '';
+
+        if (backupBranchExists) {
+            const parentSha = await runGitCommand(['rev-parse', backupBranch]);
+            parentCommitArgs = ['-p', parentSha];
+            try {
+                // バックアップブランチの最新コミットのツリーを取得
+                currentBackupTree = await runGitCommand(['rev-parse', `${backupBranch}^{tree}`]);
+            } catch (treeError) {
+                console.warn(`Could not get tree for existing backup branch ${backupBranch}. Proceeding anyway.`);
             }
+        } else {
+            // バックアップブランチがない場合、現在のHEADを親とする (最初のバックアップコミット)
+            const currentHead = await runGitCommand(['rev-parse', 'HEAD']);
+            parentCommitArgs = ['-p', currentHead];
+            console.log(`Backup branch '${backupBranch}' not found. Will create it based on current HEAD (${currentHead}).`);
         }
-        for (const file of fs.readdirSync(repoRoot)) {
-            if (ignoreList.includes(file)) continue;
-            copyRecursive(path.join(repoRoot, file), path.join(tempDir, file));
+
+        // 3. 変更がないか確認 (現在のインデックスツリーとバックアップブランチの最新ツリーを比較)
+        if (backupBranchExists && stagedIndexTree === currentBackupTree) {
+            console.log("No changes detected between staged files and the last backup commit. Skipping commit.");
+            return; // 変更がない場合はコミットしない
         }
-        // add/commit
-        await runGitCommand(['add', '.'], tempDir);
-        // 変更がなければコミットしない
-        const status = await runGitCommand(['status', '--porcelain'], tempDir);
-        if (!status || status.trim() === '') {
-            console.log("No changes to commit in this cycle (worktree snapshot identical).");
-            await runGitCommand(['worktree', 'remove', tempDir, '--force']);
-            rmSync(tempDir, { recursive: true, force: true });
-            return;
+
+        // 4. コミットオブジェクトを作成
+        const commitArgs = ['commit-tree', stagedIndexTree, ...parentCommitArgs, '-m', message];
+        const newCommitSha = await runGitCommand(commitArgs);
+        if (!newCommitSha) {
+            throw new Error("Failed to create commit object.");
         }
-        await runGitCommand(['commit', '-m', message], tempDir);
-        console.log("Backup commit successful in worktree (full snapshot).");
-        await runGitCommand(['worktree', 'remove', tempDir, '--force']);
-        rmSync(tempDir, { recursive: true, force: true });
+        console.log(`Created new commit object: ${newCommitSha}`);
+
+        // 5. バックアップブランチの参照を更新 (または作成)
+        if (backupBranchExists) {
+            await runGitCommand(['update-ref', `refs/heads/${backupBranch}`, newCommitSha]);
+            console.log(`Updated backup branch '${backupBranch}' to commit ${newCommitSha}`);
+        } else {
+            await runGitCommand(['branch', backupBranch, newCommitSha]);
+            console.log(`Created backup branch '${backupBranch}' pointing to commit ${newCommitSha}`);
+        }
+
+        console.log("Commit to backup branch successful.");
+
     } catch (error) {
-        console.error("Error during backup commit (worktree full snapshot):", error.message);
-        try {
-            await runGitCommand(['worktree', 'remove', tempDir, '--force']);
-        } catch {}
-        try {
-            rmSync(tempDir, { recursive: true, force: true });
-        } catch {}
-        throw error;
+        console.error("Error during commit to backup branch:", error.message);
+        throw error; // Re-throw the error to be caught by the main cycle
     }
 }
 
@@ -233,40 +234,62 @@ async function pushChanges(remote = 'origin', branch = null) {
     }
 }
 
-// Function to untrack files that are tracked but now match .gitignore rules
 async function untrackIgnoredFiles() {
     console.log("Checking for tracked files that should be ignored...");
     try {
+        // Get list of tracked files
         const trackedFilesOutput = await runGitCommand(['ls-files', '-z']);
         if (!trackedFilesOutput) {
             console.log("No files are currently tracked.");
-            return;
+            return; // Exit if no files are tracked
         }
 
-        const ignoredTrackedFilesOutput = await runGitCommand(['check-ignore', '--stdin', '-z'], process.cwd(), trackedFilesOutput);
-
-        if (!ignoredTrackedFilesOutput) {
-            console.log("No tracked files match .gitignore rules.");
-            return; 
+        // Step 2: Use check-ignore with stdin to filter the tracked files
+        let ignoredTrackedFilesOutput = '';
+        try {
+            ignoredTrackedFilesOutput = await runGitCommand(
+                ['check-ignore', '--stdin', '-z'], // Pass files via stdin
+                process.cwd(),
+                trackedFilesOutput // Pass the null-separated list from ls-files
+            );
+            // If check-ignore exits with 0, it means matches were found and outputted.
+        } catch (error) {
+            // Exit code 1 from check-ignore means no matches found, which is not an error here.
+            if (error.message && error.message.includes('Exit code 1')) {
+                console.log("No tracked files match .gitignore rules.");
+                return; // Successfully determined no files need untracking
+            } else {
+                // Log and re-throw other errors
+                console.error("Error running git check-ignore:", error.message);
+                throw error;
+            }
         }
 
-        const filesToUntrack = ignoredTrackedFilesOutput.split('\0').filter(f => f); 
+        // Step 3: Process the output from check-ignore
+        const filesToUntrack = ignoredTrackedFilesOutput.split('\0').filter(f => f);
 
         if (filesToUntrack.length === 0) {
-            console.log("No tracked files match .gitignore rules after filtering.");
+            // This case should ideally not happen if exit code was 0, but handle defensively.
+            console.log("check-ignore exited successfully but returned no files to untrack.");
             return;
         }
 
         console.log(`Found ${filesToUntrack.length} tracked file(s) matching .gitignore:`);
         filesToUntrack.forEach(file => console.log(`  - ${file}`));
 
-        const rmArgs = ['rm', '--cached', '-z', '--', ...filesToUntrack];
-        await runGitCommand(rmArgs);
+        // Remove the ignored files from the index in batches
+        const batchSize = 50; // Keep batching for rm --cached
+        for (let i = 0; i < filesToUntrack.length; i += batchSize) {
+            const batch = filesToUntrack.slice(i, i + batchSize);
+            // Use -z with rm --cached as filesToUntrack is null-separated
+            await runGitCommand(['rm', '--cached', '-z', '--', ...batch]);
+        }
 
         console.log("Successfully untracked the above files.");
 
     } catch (error) {
-        console.error("Error checking or untracking ignored files:", error.message);
+        // Catch errors from ls-files or rethrown check-ignore errors
+        console.error("Error during untrackIgnoredFiles process:", error.message);
     }
 }
 
