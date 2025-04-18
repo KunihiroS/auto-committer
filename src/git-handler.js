@@ -234,61 +234,58 @@ async function pushChanges(remote = 'origin', branch = null) {
     }
 }
 
+const ignore = require('ignore');
+
 async function untrackIgnoredFiles() {
     console.log("Checking for tracked files that should be ignored...");
     try {
-        // Get list of tracked files
+        // 1. Read .gitignore patterns
+        const gitignorePath = path.join(process.cwd(), '.gitignore');
+        let gitignoreContent = '';
+        try {
+            gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
+        } catch (e) {
+            console.log(".gitignore not found, skipping untrack step.");
+            return;
+        }
+        const ig = ignore();
+        ig.add(gitignoreContent);
+
+        // 2. Get list of tracked files
         const trackedFilesOutput = await runGitCommand(['ls-files', '-z']);
         if (!trackedFilesOutput) {
             console.log("No files are currently tracked.");
-            return; // Exit if no files are tracked
+            return;
         }
-
-        // Step 2: Use check-ignore with stdin to filter the tracked files
-        let ignoredTrackedFilesOutput = '';
-        try {
-            ignoredTrackedFilesOutput = await runGitCommand(
-                ['check-ignore', '--stdin', '-z'], // Pass files via stdin
-                process.cwd(),
-                trackedFilesOutput // Pass the null-separated list from ls-files
-            );
-            // If check-ignore exits with 0, it means matches were found and outputted.
-        } catch (error) {
-            // Exit code 1 from check-ignore means no matches found, which is not an error here.
-            if (error.message && error.message.includes('Exit code 1')) {
-                console.log("No tracked files match .gitignore rules.");
-                return; // Successfully determined no files need untracking
-            } else {
-                // Log and re-throw other errors
-                console.error("Error running git check-ignore:", error.message);
-                throw error;
-            }
-        }
-
-        // Step 3: Process the output from check-ignore
-        const filesToUntrack = ignoredTrackedFilesOutput.split('\0').filter(f => f);
-
-        if (filesToUntrack.length === 0) {
-            // This case should ideally not happen if exit code was 0, but handle defensively.
-            console.log("check-ignore exited successfully but returned no files to untrack.");
+        const trackedFiles = trackedFilesOutput.split('\0').filter(f => f);
+        if (trackedFiles.length === 0) {
+            console.log("No tracked files found.");
             return;
         }
 
-        console.log(`Found ${filesToUntrack.length} tracked file(s) matching .gitignore:`);
-        filesToUntrack.forEach(file => console.log(`  - ${file}`));
+        // 3. Filter files that match .gitignore patterns
+        const filesToUntrack = ig.filter(trackedFiles, { ignorecase: false, dot: true, matchBase: true, });
+        // ignore.filter returns files NOT ignored, so we need the complement
+        const ignoredFiles = trackedFiles.filter(f => !filesToUntrack.includes(f));
 
-        // Remove the ignored files from the index in batches
-        const batchSize = 50; // Keep batching for rm --cached
-        for (let i = 0; i < filesToUntrack.length; i += batchSize) {
-            const batch = filesToUntrack.slice(i, i + batchSize);
-            // Use -z with rm --cached as filesToUntrack is null-separated
-            await runGitCommand(['rm', '--cached', '-z', '--', ...batch]);
+        if (ignoredFiles.length === 0) {
+            console.log("No tracked files match .gitignore rules.");
+            return;
+        }
+
+        console.log(`Found ${ignoredFiles.length} tracked file(s) matching .gitignore:`);
+        ignoredFiles.forEach(file => console.log(`  - ${file}`));
+
+        // 4. Remove the ignored files from the index in batches
+        const batchSize = 50;
+        for (let i = 0; i < ignoredFiles.length; i += batchSize) {
+            const batch = ignoredFiles.slice(i, i + batchSize);
+            await runGitCommand(['rm', '--cached', '--', ...batch]);
         }
 
         console.log("Successfully untracked the above files.");
 
     } catch (error) {
-        // Catch errors from ls-files or rethrown check-ignore errors
         console.error("Error during untrackIgnoredFiles process:", error.message);
     }
 }

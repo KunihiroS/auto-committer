@@ -12,6 +12,18 @@
 
 ## Version History
 
+### 0.3.0
+
+- **Full .gitignore compliance for auto-untracking:**  
+  All tracked files matching .gitignore patterns (including wildcards and directory rules) are automatically untracked (removed from the index) and excluded from subsequent commits and pushes.  
+  Users only need to edit .gitignore to control what is ignored—no manual git operations required.
+- **Uses npm "ignore" package:**  
+  .gitignore pattern parsing is handled by the "ignore" npm package, ensuring matching logic is consistent with Git itself.
+- **Improved user experience:**  
+  If a pattern is removed from .gitignore, any matching files present in the working directory will be automatically re-tracked and committed.
+- **Backup branch safety maintained:**  
+  All commits continue to be made only to the dedicated backup branch (`auto-committer-backup`), so main and other working branches remain unaffected.
+
 ### 0.2.0
 
 - **Enhanced Safety:** Commits are now made exclusively to a dedicated backup branch named `auto-committer-backup`.
